@@ -1,0 +1,176 @@
+Cũng khá lâu rồi không chia sẻ với mọi người về lập trình kkk! nay mình chia sẻ với mọi người cách kết hợp giữa React-Native với NodeJS để xây dựng app mobile đơn giản, nay mình sẽ xây dựng chức năng đăng nhập trên React-native với Nodejs chỉ để các bạn hình dung ra và hiểu về kết hợp này thôi!
+Nói đến React-Native thì mọi người chắc ai cũng ít nhiều gì cũng biết và đã chạy Demo thử, nên mình sẽ không làm những bước cơ bản và đi thẳng vào vấn đề luôn.
+Con NodeJS thì các bạn cũng đã hiểu là một ngôn ngữ giúp chúng ta xây dựng bên phía Back-end và tạo ứng dụng chat,...
+I:Cài đặt React-Native
+$ react-native init Demo1
+$ cd Demo1
+$ react-native run-android
+
+Hiện tại nếu bạn cài đặt các bước trên thì bạn sẽ tải về react-native@0.56, nhưng react-native version 0.56 chỉ hổ trợ trên IOS nên bạn cần chạy lại câu lệnh sao để thay đổi version về 0.55.4
+$ npm install --save react-native@0.55.4
+
+Bên cạnh đó các bạn vào file package.json các bạn thay đổi babel-preset-react-native về 4.0.0 để chạy trên react-native@0.55.4
+ "babel-preset-react-native": "^4.0.0",
+$ npm install --save babel-preset-react-native
+
+Sau khi các bạn đã thực hiện các bước trên các bạn có thể chạy câu lệnh để khởi động React-native, các bạn nhớ khởi động AVD emulator trong android lên nhé, bạn vào thư mục sdk/tool trong android và chạy
+$ ./emulator -avd ten_avd
+
+Nếu các bạn có gặp lỗi các bạn thử chạy lại câu lệnh sau đây để xóa cache và chạy lại câu lệnh run react-native
+$ npm start -- --reset-cache
+$ react-native run-android
+
+Khi ứng dụng được load trên máy ảo AVD hiện ra giao diện React-native là bạn đã thành công!
+
+II: Cài Nodejs
+Đầu tiên để có thể dùng Nodejs bạn cần cài đặt Nodejs nhé, sau đó khởi tạo project "nodejs-react" và thực hiện câu lệnh sau:
+
+$ npm init
+
+Bạn cài các thư viện cần thiết như sau: express, body-parser,cors, mysql. Các thư viện này các bạn ít gì cũng hiểu rồi nên mình sẽ bỏ qua.
+
+$ npm install express body-parser cors mysql
+
+Các bạn có thể vào trang chủ npm và tìm thư viện bên trên và xem cách hướng dẫn config nhé, ở trong bài này mình chỉ cách các bạn gửi dữ liệu từ React-native qua Nodejs, yêu cầu nó có thể nhận được dữ liệu truyền qua là bạn có thể xử lý tùy ý và theo cách làm của bạn muốn!
+
+Bạn tạo cho mình một file app.js trong project nodejs-react như sau:
+
+var express = require('express');
+var cors = require('cors')
+var bodyParser = require('body-parser');
+var app = express();
+app.use(cors())
+var jsonParser = bodyParser.json()
+// parse application/x-www-form-urlencoded
+var urlencodedParser = bodyParser.urlencoded({ extended: false })
+
+app.post('/user/login', jsonParser, function (req, res) {
+	var username = req.body.username; //lấy dữ liệu bên react-native gửi qua
+	var password = req.body.password;
+	if(username=='skipperhoa' && password=='12345678'){
+		res.json({"success":1,"username":username,"password":password});
+	}
+	res.json({"success":0,"username":username,"password":password});
+	
+})
+app.listen(8888,function(){
+    console.log("Server đang lắng nghe port 8888");
+});
+
+Ở phần bên trên mình tạo server lắng nghe port:8888,Bên cạnh đó để trong máy ảo AVD emulator lắng nghe được, bạn cần gõ địa chỉ sau để lắng nghe http://10.0.2.2:888/user/login
+Bên trên mình chỉ so sánh giá trị mặc định mình tạo username:"skipperhoa" && password:"12345678" để xác thực cho nhanh ::), các bạn có thể so sánh trong mysql hay cơ sở dữ liệu nào các bạn muốn.
+
+III: KẾT HỢP REACT-NATIVE và NODEJS
+
+Project "Demo1" của react-native: các bạn chỉnh sửa file App.js lại như sau:
+
+App.js
+
+import React, {Component} from 'react';
+import {Platform, StyleSheet, Text,Alert, View,TouchableOpacity,TextInput,Image,Dimensions} from 'react-native';
+export default class App extends Component{
+  constructor(props){
+    super(props);
+    this.state={
+      username:"",
+      password:"",
+      checkLogin:0
+    }
+  }
+  _onSubmit=()=>{
+    return fetch('http://10.0.2.2:8888/user/login', {  
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        username: this.state.username,
+        password: this.state.password,
+      })
+    })
+    .then((response) => response.json())
+    .then((responseJson) => {
+        this.setState({checkLogin:responseJson.success});
+        if(this.state.checkLogin>0){
+            //console.warn(responseJson);
+            Alert.alert("Thông báo!","Bạn đã đăng nhập thành công!");
+        }
+        else{
+           // console.warn(responseJson);
+            Alert.alert("Thông báo!","Bạn đã đăng nhập không thành công!");
+        }
+    })
+    .catch((error) =>{
+        console.error(error);
+    });
+  }
+  render() {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.title}>Login React-Native</Text>
+        <TextInput placeholder="Username" 
+           placeholderTextColor="black"
+           underlineColorAndroid="transparent"
+           style={styles.txtInput}  onChangeText={(username) => this.setState({username:username})}/>
+        <TextInput placeholder="Password" 
+            underlineColorAndroid="transparent"
+            placeholderTextColor="black"
+            secureTextEntry={true}
+            style={styles.txtInput}  onChangeText={(password) => this.setState({password:password})}/>
+        <TouchableOpacity onPress={this._onSubmit} style={styles.btnLogin}>
+            <Text style={styles.txtLogin}>Login</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+}
+const DEVICE_WIDTH = Dimensions.get('window').width;
+const DEVICE_HEIGHT = Dimensions.get('window').height;
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F5FCFF',
+  },
+  title:{
+    fontSize:30,
+    color:'red'
+  },
+  txtInput:{
+    backgroundColor: 'rgba(0,0,0, 0.1)',
+    width: DEVICE_WIDTH - 40,
+    
+    marginHorizontal: 20,
+    padding:8,
+    borderRadius: 20,
+    color: '#000',
+    marginTop:2
+  },
+  btnLogin:{
+     width: DEVICE_WIDTH - 40,
+     backgroundColor:'rgba(0,145,234,1)',
+     padding:8,
+     borderRadius: 20,
+     marginTop:2
+
+  },
+  txtLogin:{
+    color:'#fff',
+    textAlign:'center'
+  }
+ 
+});
+
+
+Trong đoạn code bên trên mình tạo 3 cái trạng thái:(username,password,checkLogin), dùng để thay đổi giá trị khi nhập username và password, còn checkLogin dùng kiểm tra xem ta có login thành công hay chưa.
+
+Các bạn xem hàm _onSubmit() bên trên mình có dùng fetch trong react-native để request địa chỉ đến nodejs mà mình đã cấu hình app.post() bên trên, http://10.0.2.2:8888/user/login, để Nodejs kiểm tra và return về kết quả cho mình!
+
+Với bài chia sẻ này có thể giúp bạn hiểu được cách truyền dữ liệu qua lại của React-Native và Nodejs, và từ đó bạn có thể có nhiều ý tưởng cho dự án của mình!
+
+Hẹn gặp lại mọi người với bài hướng dẫn chia sẻ sau!
+
+
+
